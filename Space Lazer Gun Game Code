@@ -1,0 +1,330 @@
+# space shooter game by GeneralWallace
+# easy!
+# (projectiles may cause lag)
+
+app.playerImageURL = "cmu://1116031/43509946/smallersmalls.png"
+app.enemyImageURL = "cmu://1116031/43605883/smallerspiderrrr.png"
+app.backgroundImageURL = "cmu://1116031/43608379/backback.png"
+app.steps = 0
+app.seconds = 0
+app.timerText = "00:00"
+
+background = Image(app.backgroundImageURL,0,0)
+
+enemykillscore = 0
+wavescore = 0
+
+r = Image(app.playerImageURL, 50, 60)
+
+moveSpeed = 2
+lerpSpeed = .1
+
+lives = 5
+
+extraEnemies = 0
+extraEnemyMultiplier = 2
+wave = 0
+
+hits = Label(lives,20,25,size = 35,fill=gradient("red","maroon"))
+
+canCount = False
+
+timerLabel = Label("0",200,360,size = 20,bold=True,fill=gradient("yellow","gold"),border='black',borderWidth = 1)
+
+roundlabel = Label("GET READY!",200,60,size = 35,bold=True,fill=gradient("white","grey"),border='black',borderWidth = 1)
+
+endgame = Label("GAME OVER!",200,200,size = 60,bold=True,fill=gradient("red","orange","yellow"),border='maroon',borderWidth = 1)
+endgame.visible = False
+
+endgamescore = Label("yay",200,300,size = 17,bold=True,fill=gradient("red","orange","yellow"),border='maroon',borderWidth = 1)
+endgamescore.visible = False
+
+win = Label("YOU WIN!",200,200,size = 60,bold=True,fill=gradient('paleGreen','forestGreen','darkGreen'),border='darkCyan',borderWidth = 1)
+win.visible = False
+
+targetX = r.centerX
+targetY = r.centerY
+
+projectiles = []
+enemyProjectiles = []
+projectileSpeed = 10
+enemyProjectileSpeed = 1
+
+enemies = []
+enemySpeed = .0025
+
+canShoot = True
+cooldownTime = 20
+cooldownCounter = 0
+
+stepsTaken = 0
+immuneSteps = 0
+wasHit = False
+immune = False
+
+field = 0
+
+activeInv = False
+
+app.stepsPerSecond = 120
+
+mousePos = {"x": r.centerX, "y": r.centerY}
+
+def lerp(a, b, t):
+    return a + (b - a) * t
+
+def shootProjectile():
+    dx = mousePos["x"] - r.centerX
+    dy = mousePos["y"] - r.centerY
+    mag = (dx**2 + dy**2)**0.5
+    if mag == 0:
+        return
+    
+    dx /= mag
+    dy /= mag
+    
+    p = Oval(r.centerX, r.centerY, 10, 10, fill=gradient("gold","orange"))
+    p.dx = dx * projectileSpeed
+    p.dy = dy * projectileSpeed
+    projectiles.append(p)
+    
+def enemyShootProjectile(attacker):
+    dx = r.centerX - attacker.centerX
+    dy = r.centerY - attacker.centerY
+    mag = (dx**2 + dy**2)**0.5
+    if mag == 0:
+        return
+    
+    dx /= mag
+    dy /= mag
+    
+    p = Oval(attacker.centerX, attacker.centerY, 10, 10, fill=gradient("red","maroon"))
+    p.dx = dx * enemyProjectileSpeed
+    p.dy = dy * enemyProjectileSpeed
+    enemyProjectiles.append(p)
+
+def onMouseMove(x, y):
+    angle = angleTo(r.centerX,r.centerY,x,y)
+    r.rotateAngle = angle + 90
+    
+    mousePos["x"] = x
+    mousePos["y"] = y
+
+def spawnEnemies(lowest,highest):
+    global wave, extraEnemies, canCount, wavescore
+    
+    wave+=1
+    extraEnemies+=1
+    
+    wavescore += 100
+    
+    canCount = True
+    
+    roundlabel.visible = True
+    roundlabel.value = "WAVE " + str(wave) + "!"
+    
+    #too laggy!!!
+    #extraEnemies *= extraEnemyMultiplier
+    
+    print("extra enemies this round:",extraEnemies)
+    
+    for i in range(1,extraEnemies):
+        e= Image(app.enemyImageURL, 200, 200)
+        
+        if randrange(1,3) == 1:
+            e.centerX = r.centerX + randrange(lowest,highest)
+        else:
+            e.centerX = r.centerX - randrange(lowest,highest)
+        
+        if randrange(1,3) == 1:
+            e.centerY = r.centerY + randrange(lowest,highest)
+        else:
+            e.centerY = r.centerY - randrange(lowest,highest)
+        
+        enemyShootProjectile(e)
+        enemies.append(e)
+    
+    for i in range(1,5):
+        e= Image(app.enemyImageURL, 200, 200)
+        
+        if randrange(1,3) == 1:
+            e.centerX = r.centerX + randrange(lowest,highest)
+        else:
+            e.centerX = r.centerX - randrange(lowest,highest)
+        if randrange(1,3) == 1:
+            e.centerY = r.centerY + randrange(lowest,highest)
+        else:
+            e.centerY = r.centerY - randrange(lowest,highest)
+        
+        enemyShootProjectile(e)
+        enemies.append(e)
+
+def onKeyHold(keys):
+    global targetX, targetY, canShoot
+    
+    dx, dy = 0,0
+    
+    if "w" in keys:
+       dy -= 1
+    elif "s" in keys:
+        dy +=1
+    elif "a" in keys:
+        dx -= 1
+    elif "d" in keys:
+        dx +=1
+        
+    if dx != 0 or dy != 0:
+        mag = (dx**2 + dy**2)**0.5
+        dx /= mag
+        dy /= mag
+        
+        targetX += dx * moveSpeed
+        targetY += dy * moveSpeed
+        
+    if 'space' in keys and canShoot:
+        shootProjectile()
+        canShoot = False
+
+def onStep():
+    global cooldownCounter, canShoot, stepsTaken, lives, wave, wasHit, immune, immuneSteps, activeInv, field, canCount, enemykillscore, wavescore
+    
+    if canCount:
+        app.steps+=1
+        
+        if app.steps % app.stepsPerSecond == 0:
+            app.seconds+=1
+            timerLabel.value = app.seconds
+    
+    if wasHit:
+        wasHit = False
+        immune = True
+        immuneSteps = 0
+        print("was hit! you are immune!!")
+        
+    if immune:
+        if not activeInv:
+            activeInv = True
+            print("made feild!")
+            field = Circle(r.centerX,r.centerY,30,fill="yellow",opacity=50)
+            
+        immuneSteps+=1
+        
+        if activeInv:
+            field.centerX = r.centerX
+            field.centerY = r.centerY
+        
+        if immuneSteps >= 300:
+            activeInv = False
+            field.visible = False
+            field = None
+            print("immune cooldown over! no longer immune!")
+            immune = False
+    
+    if wave >= 20:
+        win.visible = True
+        win.toFront()
+        
+        endgamescore.visible = True
+        endgamescore.value = "Score = " + str(wavescore+enemykillscore+1000)
+        endgamescore.toFront()
+        
+        if lives == 1:
+            app.showMessage("You win! You strung on with only " + str(lives) + " life left! Close one! You took " + str(timerLabel.value) + " seconds.")
+        if lives <= 3:
+            app.showMessage("You win! You had " + str(lives) + " lives left! Nice work! Try making it with five lol. You took " + str(timerLabel.value) + " seconds.")
+        if lives == 4:
+            app.showMessage("You win! You had " + str(lives) + " lives left! So close! Maybe a retry? You took " + str(timerLabel.value) + " seconds.")
+        if lives == 5:
+            app.showMessage("You win with a PERFECT score of 5 in " + str(timerLabel.value) + " seconds! Congrats!")
+        
+        hits.value = lives
+        app.stop()
+    
+    if lives <= 0:
+        lives = 0
+        endgame.visible = True
+        endgame.toFront()
+        
+        endgamescore.visible = True
+        endgamescore.value = "Score = " + str(wavescore+enemykillscore)
+        endgamescore.toFront()
+        
+        hits.value = 0
+        app.showMessage("Game over! You died at wave " + str(wave) + "! Maybe another game?")
+        
+        hits.value = lives
+        app.stop()
+    
+    r.centerX = lerp(r.centerX, targetX, lerpSpeed)
+    r.centerY = lerp(r.centerY, targetY, lerpSpeed)
+    
+    # regular proj update logic
+    for p in projectiles:
+        p.centerX += p.dx
+        p.centerY += p.dy
+        
+    # enemy proj update logic
+    for p in enemyProjectiles:
+        p.centerX += p.dx
+        p.centerY += p.dy
+    
+    # enemy proj out of bounds logic
+    for p in enemyProjectiles[:]:
+        if p.centerX < -20 or p.centerX > 420 or p.centerY < -20 or p.centerY > 420:
+            enemyProjectiles.remove(p)
+            p.visible = False
+            print("removed enemy projectile")
+            
+    # regular proj out of bounds logic    
+    for p in projectiles[:]:
+        if p.centerX < -20 or p.centerX > 420 or p.centerY < -20 or p.centerY > 420:
+            projectiles.remove(p)
+            p.visible = False
+            print("removed projectile")
+
+    # regular proj hitting
+    for p in projectiles:
+        for e in enemies:
+            if p.hitsShape(e) and p:
+                enemykillscore+=2
+                print("removed projectile cause hit")
+                enemies.remove(e)
+                e.visible = False
+
+    # enemy proj hitting
+    for p in enemyProjectiles:
+        if p.hitsShape(r) and p:
+            print("removed enemy projectile cause hit player!")
+            
+            if not immune:
+                print("not immune!")
+                lives-=1
+                hits.value = lives
+                print("u were hit!")
+                wasHit = True
+                enemyProjectiles.remove(p)
+                p.visible = False
+
+    for e in enemies:
+        e.centerX = lerp(e.centerX, r.centerX, enemySpeed)
+        e.centerY = lerp(e.centerY, r.centerY, enemySpeed)
+        
+        if e.hitsShape(r):
+            if not immune:
+                lives-=1
+                hits.value = lives
+                print("u were hit!")
+                wasHit = True
+
+    stepsTaken+=1
+    
+    if stepsTaken > 500:
+        spawnEnemies(75,300)
+        stepsTaken = 0
+
+    if not canShoot:
+        cooldownCounter +=1
+        if cooldownCounter >= cooldownTime:
+            canShoot = True
+            cooldownCounter = 0
+            
