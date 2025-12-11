@@ -47,6 +47,9 @@ targetY = r.centerY
 
 projectiles = []
 enemyProjectiles = []
+collisionEffects = []
+hitEffects = []
+
 projectileSpeed = 10
 enemyProjectileSpeed = 1
 
@@ -172,6 +175,9 @@ def onKeyHold(keys):
         dx -= 1
     elif "d" in keys:
         dx +=1
+    elif "left" in keys:
+        r.rotateAngle+20
+        print(1)
         
     if dx != 0 or dy != 0:
         mag = (dx**2 + dy**2)**0.5
@@ -220,7 +226,7 @@ def onStep():
             print("immune cooldown over! no longer immune!")
             immune = False
     
-    if wave >= 20:
+    if wave >= 50:
         win.visible = True
         win.toFront()
         
@@ -231,7 +237,7 @@ def onStep():
         if lives == 1:
             app.showMessage("You win! You strung on with only " + str(lives) + " life left! Close one! You took " + str(timerLabel.value) + " seconds.")
         if lives <= 3:
-            app.showMessage("You win! You had " + str(lives) + " lives left! Nice work! Try making it with five lol. You took " + str(timerLabel.value) + " seconds.")
+            app.showMessage("You win! You had " + str(lives) + " lives left! Nice work! Try making it to five lol. You took " + str(timerLabel.value) + " seconds.")
         if lives == 4:
             app.showMessage("You win! You had " + str(lives) + " lives left! So close! Maybe a retry? You took " + str(timerLabel.value) + " seconds.")
         if lives == 5:
@@ -290,6 +296,37 @@ def onStep():
                 print("removed projectile cause hit")
                 enemies.remove(e)
                 e.visible = False
+                
+                _H = Circle(p.centerX,p.centerY,1,fill=gradient("red","maroon"))
+                hitEffects.append(_H)
+
+    #reg proj hitting enemy proj
+    for p in projectiles:
+        for e in enemyProjectiles:
+            if p.hitsShape(e):
+                print("collision!")
+                enemyProjectiles.remove(e)
+                projectiles.remove(p)
+                p.visible = False
+                e.visible = False
+                _S = Circle(p.centerX,p.centerY,1,fill=gradient("gold","orange"))
+                collisionEffects.append(_S)
+
+    #proj collision effects
+    for e in collisionEffects:
+        e.radius+=1
+        e.opacity-=1
+        if e.opacity <= 0:
+            e.visible = False
+            collisionEffects.remove(e)
+            
+    #enemy hit effects
+    for h in hitEffects:
+        h.radius+=1
+        h.opacity-=2
+        if h.opacity <= 0:
+            h.visible = False
+            hitEffects.remove(h)
 
     # enemy proj hitting
     for p in enemyProjectiles:
@@ -327,4 +364,5 @@ def onStep():
         if cooldownCounter >= cooldownTime:
             canShoot = True
             cooldownCounter = 0
+            
             
