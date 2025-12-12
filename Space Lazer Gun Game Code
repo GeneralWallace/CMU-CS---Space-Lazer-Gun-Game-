@@ -306,7 +306,7 @@ def onStep():
             if p.hitsShape(e):
                 print("collision!")
                 enemyProjectiles.remove(e)
-                projectiles.remove(p)
+                # projectiles.remove(p)
                 p.visible = False
                 e.visible = False
                 _S = Circle(p.centerX,p.centerY,1,fill=gradient("gold","orange"))
@@ -319,6 +319,16 @@ def onStep():
         if e.opacity <= 0:
             e.visible = False
             collisionEffects.remove(e)
+        
+        for en in enemies:
+            if e.hitsShape(en):
+                enemykillscore+=2
+                
+                enemies.remove(en)
+                en.visible = False
+                
+                _H = Circle(en.centerX,en.centerY,1,fill=gradient("red","maroon"))
+                hitEffects.append(_H)
             
     #enemy hit effects
     for h in hitEffects:
@@ -364,5 +374,4 @@ def onStep():
         if cooldownCounter >= cooldownTime:
             canShoot = True
             cooldownCounter = 0
-            
             
